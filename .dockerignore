@@ -1,0 +1,48 @@
+# 依赖目录
+node_modules
+**/node_modules
+
+# npm lock 文件（使用 pnpm）
+package-lock.json
+**/package-lock.json
+
+# 构建产物（会在 Docker 内重新构建）
+apps/frontend/dist
+apps/backend/logs
+
+# Git
+.git
+.gitignore
+
+# 环境变量文件（敏感信息）
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# 日志
+*.log
+logs
+
+# 测试
+coverage
+**/*.test.js
+**/*.spec.js
+
+# 文档
+docs
+*.md
+!README.md
+
+# Turbo 缓存
+.turbo
+
+# 其他
+.DS_Store
+Thumbs.db

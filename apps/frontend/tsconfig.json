@@ -1,0 +1,28 @@
+{
+  "extends": "@drug-interaction/tsconfig/vite.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "references": [{ "path": "./tsconfig.node.json" }],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "out",
+    ".vscode",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "coverage",
+    ".git",
+    "target",
+    "logs"
+  ]
+}

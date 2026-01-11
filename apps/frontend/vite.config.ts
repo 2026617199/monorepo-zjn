@@ -1,0 +1,36 @@
+/// <reference types="vitest" />
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
+
+export default defineConfig({
+  plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        // target: 'https://zjn-backend-165954-5-1362504576.sh.run.tcloudbase.com',
+        changeOrigin: true
+      }
+    }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          echarts: ['echarts']
+        }
+      }
+    }
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom'
+  }
+})
