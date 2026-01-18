@@ -166,6 +166,7 @@ const navLinks = [
   { name: '冲突检测', path: '/conflict-detection' },
   { name: '药物图谱', path: '/drug-graph' },
   { name: '药物库', path: '/drug-database' },
+  { name: '药品查询', path: '/drug-query' },
   { name: 'AI问答', path: '/ai-chat' }
 ]
 
@@ -177,6 +178,13 @@ const features = [
     title: '冲突检测',
     description: '智能检测多种药物之间的相互作用，评估潜在风险等级，提供安全用药建议',
     glowColor: 'rgba(239, 68, 68, 0.15)'
+  },
+  {
+    path: '/drug-query',
+    icon: '🔍',
+    title: '药品查询',
+    description: '输入药物名称，AI智能分析药物详细信息，包括药理作用、副作用、禁忌症等',
+    glowColor: 'rgba(245, 158, 11, 0.15)'
   },
   {
     path: '/drug-graph',

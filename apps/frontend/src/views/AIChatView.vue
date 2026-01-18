@@ -246,6 +246,7 @@ const navLinks = [
   { name: '冲突检测', path: '/conflict-detection' },
   { name: '药物图谱', path: '/drug-graph' },
   { name: '药物库', path: '/drug-database' },
+  { name: '药品查询', path: '/drug-query' },
   { name: 'AI问答', path: '/ai-chat' }
 ]
 
