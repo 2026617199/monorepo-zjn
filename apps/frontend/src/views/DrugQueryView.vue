@@ -194,11 +194,11 @@
                 class="history-item" 
                 v-for="(item, index) in history" 
                 :key="index"
-                @click="searchQuery = item; handleSearch(); showHistory = false"
+                @click="handleHistoryClick(item)"
               >
-                <span class="history-icon">💊</span>
-                <span class="history-name">{{ item }}</span>
-                <span class="history-time">{{ getTimeAgo(index) }}</span>
+                <span class="history-icon">{{ getHistoryIcon(item) }}</span>
+                <span class="history-name">{{ getHistoryDisplayName(item) }}</span>
+                <span class="history-time">{{ getTimeAgo(item.timestamp) }}</span>
               </button>
             </div>
             <button class="clear-history-btn" @click="clearHistory">清除历史记录</button>
@@ -497,6 +497,14 @@ const navLinks = [
 // 快捷查询标签
 const quickTags = ['阿司匹林', '布洛芬', '青霉素', '头孢', '二甲双胍']
 
+// 历史记录类型定义
+interface HistoryItem {
+  name: string          // 查询名称（单个药物或组合名称）
+  type: 'drug' | 'interaction'  // 查询类型
+  drugs?: string[]      // 相互作用查询时保存多个药物
+  timestamp: number     // 时间戳
+}
+
 // 响应式数据
 const searchQuery = ref('')
 const loading = ref(false)
@@ -505,7 +513,7 @@ const searchResult = ref<AnalyzeDrugResult | null>(null)
 const error = ref<string | null>(null)
 const validationHint = ref<string | null>(null)
 const showAiAnalysis = ref(false)
-const history = ref<string[]>([])
+const history = ref<HistoryItem[]>([])
 const toasts = ref<Array<{ id: number; message: string; type: string }>>([])
 const showHistory = ref(false)
 
@@ -609,10 +617,35 @@ const toggleAiAnalysis = () => {
 }
 
 // 历史记录管理
-const addToHistory = (name: string) => {
-  const newHistory = [name, ...history.value.filter(h => h !== name)].slice(0, 10)
-  history.value = newHistory
-  localStorage.setItem('drugQueryHistory', JSON.stringify(newHistory))
+const addToHistory = (name: string, type: 'drug' | 'interaction' = 'drug', drugs?: string[]) => {
+  const newItem: HistoryItem = {
+    name,
+    type,
+    drugs,
+    timestamp: Date.now()
+  }
+  
+  // 避免重复（同类型同名称的去重）
+  const isDuplicate = history.value.some(
+    item => item.type === type && 
+      (type === 'drug' ? item.name === name : JSON.stringify(item.drugs) === JSON.stringify(drugs))
+  )
+  
+  if (isDuplicate) {
+    // 将已有项移到顶部并更新时间戳
+    const newHistory = history.value.map(item => {
+      if (item.type === type && (type === 'drug' ? item.name === name : JSON.stringify(item.drugs) === JSON.stringify(drugs))) {
+        return { ...item, timestamp: Date.now() }
+      }
+      return item
+    }).sort((a, b) => b.timestamp - a.timestamp).slice(0, 10)
+    history.value = newHistory
+  } else {
+    const newHistory = [newItem, ...history.value].slice(0, 10)
+    history.value = newHistory
+  }
+  
+  localStorage.setItem('drugQueryHistory', JSON.stringify(history.value))
 }
 
 const clearHistory = () => {
@@ -621,9 +654,43 @@ const clearHistory = () => {
   showToast('历史记录已清除', 'info')
 }
 
-const getTimeAgo = (index: number) => {
-  // 简化的相对时间显示
-  return index === 0 ? '刚刚' : `${index + 1}次前`
+const getTimeAgo = (timestamp: number) => {
+  const diff = Date.now() - timestamp
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  
+  if (seconds < 60) return '刚刚'
+  if (minutes < 60) return `${minutes}分钟前`
+  if (hours < 24) return `${hours}小时前`
+  if (days < 7) return `${days}天前`
+  return new Date(timestamp).toLocaleDateString('zh-CN')
+}
+
+// 获取历史记录显示名称
+const getHistoryDisplayName = (item: HistoryItem): string => {
+  if (item.type === 'interaction' && item.drugs && item.drugs.length > 0) {
+    return item.drugs.join(' + ')
+  }
+  return item.name
+}
+
+// 获取历史记录图标
+const getHistoryIcon = (item: HistoryItem): string => {
+  return item.type === 'interaction' ? '🔬' : '💊'
+}
+
+// 点击历史记录
+const handleHistoryClick = (item: HistoryItem) => {
+  showHistory.value = false
+  if (item.type === 'drug') {
+    searchQuery.value = item.name
+    handleSearch()
+  } else if (item.type === 'interaction' && item.drugs && item.drugs.length > 0) {
+    interactionTags.value = [...item.drugs]
+    handleInteractionAnalysis()
+  }
 }
 
 // 添加药物标签
@@ -670,6 +737,11 @@ const handleInteractionAnalysis = async () => {
     
     if (response.success && response.data) {
       interactionResult.value = response.data
+      // 添加到历史记录
+      const comboName = interactionTags.value.length > 3 
+        ? `${interactionTags.value.slice(0, 3).join(' + ')} + 等${interactionTags.value.length}种`
+        : interactionTags.value.join(' + ')
+      addToHistory(comboName, 'interaction', [...interactionTags.value])
       showToast('分析完成', 'success')
     } else {
       interactionError.value = response.error?.message || '分析失败，请稍后重试'
@@ -1056,7 +1128,8 @@ onMounted(() => {
 
   .interaction-section-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
     gap: 1.25rem;
     margin-bottom: 1.5rem;
   }
