@@ -8,24 +8,7 @@
     </div>
 
     <!-- 顶部导航栏 -->
-    <header class="header">
-      <div class="container">
-        <div class="logo" @click="navigateTo('/')">
-          <div class="logo-pill">
-            <span class="pill-half pill-left"></span>
-            <span class="pill-half pill-right"></span>
-          </div>
-          <span class="logo-text">DrugSafe<span class="logo-accent">AI</span></span>
-        </div>
-        <nav class="nav-links">
-          <router-link to="/conflict-detection" class="nav-link active">冲突检测</router-link>
-          <router-link to="/drug-graph" class="nav-link">药物图谱</router-link>
-          <router-link to="/drug-database" class="nav-link">药物库</router-link>
-          <router-link to="/drug-query" class="nav-link">药品查询</router-link>
-          <router-link to="/ai-chat" class="nav-link">AI问答</router-link>
-        </nav>
-      </div>
-    </header>
+    <AppHeader />
 
     <!-- 主要内容 -->
     <main class="main-content">
@@ -211,6 +194,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
 import { interactionApi } from '@/api/interaction'
 import DrugSelector from '@/components/DrugSelector.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'

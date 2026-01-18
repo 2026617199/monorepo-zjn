@@ -8,27 +8,7 @@
     </div>
 
     <!-- 顶部导航栏 -->
-    <header class="header">
-      <div class="container">
-        <div class="logo" @click="navigateTo('/')">
-          <div class="logo-pill">
-            <span class="pill-half pill-left"></span>
-            <span class="pill-half pill-right"></span>
-          </div>
-          <span class="logo-text">DrugSafe<span class="logo-accent">AI</span></span>
-        </div>
-        <nav class="nav-links">
-          <router-link 
-            v-for="link in navLinks" 
-            :key="link.path" 
-            :to="link.path"
-            class="nav-link"
-          >
-            {{ link.name }}
-          </router-link>
-        </nav>
-      </div>
-    </header>
+    <AppHeader />
 
     <!-- 主要内容区域（含侧边栏） -->
     <div class="main-wrapper">
@@ -166,6 +146,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
 import { useChatStore } from '@/stores/chat'
 import { connectSSE } from '@/utils/sse'
 import ChatMessage from '@/components/ChatMessage.vue'

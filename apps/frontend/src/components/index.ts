@@ -1,4 +1,5 @@
 // 可复用组件导出
+export { default as AppHeader } from './AppHeader.vue'
 export { default as BaseModal } from './BaseModal.vue'
 export { default as LoadingSpinner } from './LoadingSpinner.vue'
 export { default as Pagination } from './Pagination.vue'
