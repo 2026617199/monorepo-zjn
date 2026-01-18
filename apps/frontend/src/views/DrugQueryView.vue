@@ -482,6 +482,7 @@ import { drugApi } from '@/api/drug'
 import { interactionApi } from '@/api/interaction'
 import type { AnalyzeDrugResult } from '@/api/drug'
 import type { DetailedInteractionResult } from '@/types'
+import { getFromCache, saveToCache } from '@/utils/interactionCache'
 
 const router = useRouter()
 
@@ -733,18 +734,35 @@ const handleInteractionAnalysis = async () => {
   interactionLoading.value = true
 
   try {
-    const response = await interactionApi.analyzeInteractionsByNames(interactionTags.value)
+    // 先尝试从 IndexedDB 缓存获取
+    const cachedResult = await getFromCache(interactionTags.value)
     
-    if (response.success && response.data) {
-      interactionResult.value = response.data
+    if (cachedResult) {
+      // 使用缓存数据
+      interactionResult.value = cachedResult.result
       // 添加到历史记录
       const comboName = interactionTags.value.length > 3 
         ? `${interactionTags.value.slice(0, 3).join(' + ')} + 等${interactionTags.value.length}种`
         : interactionTags.value.join(' + ')
       addToHistory(comboName, 'interaction', [...interactionTags.value])
-      showToast('分析完成', 'success')
+      showToast('加载缓存数据成功', 'info')
     } else {
-      interactionError.value = response.error?.message || '分析失败，请稍后重试'
+      // 缓存不存在，调用后端 API
+      const response = await interactionApi.analyzeInteractionsByNames(interactionTags.value)
+      
+      if (response.success && response.data) {
+        interactionResult.value = response.data
+        // 保存到 IndexedDB 缓存
+        await saveToCache(interactionTags.value, response.data)
+        // 添加到历史记录
+        const comboName = interactionTags.value.length > 3 
+          ? `${interactionTags.value.slice(0, 3).join(' + ')} + 等${interactionTags.value.length}种`
+          : interactionTags.value.join(' + ')
+        addToHistory(comboName, 'interaction', [...interactionTags.value])
+        showToast('分析完成', 'success')
+      } else {
+        interactionError.value = response.error?.message || '分析失败，请稍后重试'
+      }
     }
   } catch (err: any) {
     console.error('分析药物相互作用失败:', err)
