@@ -1,4 +1,5 @@
 import { interactionService } from '../services/InteractionService.js'
+import { aiService } from '../services/AIService.js'
 import { logger } from '../utils/logger.js'
 
 /**
@@ -238,6 +239,160 @@ export const getInteractionById = async (ctx) => {
         message: error.message || '获取相互作用详情失败',
       },
       timestamp: Date.now(),
+    }
+  }
+}
+
+/**
+ * @swagger
+ * /api/interactions/analyze-by-names:
+ *   post:
+ *     summary: 根据药物名称深度分析相互作用（从分子层面、化学原理层面详细解释）
+ *     tags: [Interactions]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - drugNames
+ *             properties:
+ *               drugNames:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 药物名称数组（至少2个）
+ *                 example: ["阿司匹林", "布洛芬", "华法林"]
+ *     responses:
+ *       200:
+ *         description: 成功返回深度分析结果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   description: 详细的相互作用分析结果
+ *       400:
+ *         description: 请求参数错误
+ *       502:
+ *         description: AI接口调用失败
+ *       500:
+ *         description: 服务器错误
+ */
+export const analyzeInteractionsByNames = async (ctx) => {
+  try {
+    const { drugNames } = ctx.request.body
+
+    // 参数验证
+    if (!drugNames) {
+      ctx.status = 400
+      ctx.body = {
+        success: false,
+        error: {
+          code: 'INVALID_PARAMETER',
+          message: '缺少必需参数: drugNames',
+        },
+        timestamp: Date.now(),
+      }
+      return
+    }
+
+    if (!Array.isArray(drugNames)) {
+      ctx.status = 400
+      ctx.body = {
+        success: false,
+        error: {
+          code: 'INVALID_PARAMETER',
+          message: 'drugNames 必须是数组',
+        },
+        timestamp: Date.now(),
+      }
+      return
+    }
+
+    if (drugNames.length < 2) {
+      ctx.status = 400
+      ctx.body = {
+        success: false,
+        error: {
+          code: 'INVALID_PARAMETER',
+          message: '至少需要2个药物名称进行相互作用分析',
+        },
+        timestamp: Date.now(),
+      }
+      return
+    }
+
+    // 验证每个药物名称都是非空字符串
+    const invalidNames = drugNames.filter(name => typeof name !== 'string' || name.trim().length === 0)
+    if (invalidNames.length > 0) {
+      ctx.status = 400
+      ctx.body = {
+        success: false,
+        error: {
+          code: 'INVALID_PARAMETER',
+          message: '所有药物名称必须是非空字符串',
+        },
+        timestamp: Date.now(),
+      }
+      return
+    }
+
+    // 过滤并清理药物名称
+    const cleanDrugNames = drugNames.map(name => name.trim()).filter(name => name.length > 0)
+
+    logger.info('开始深度分析药物相互作用', {
+      drugNames: cleanDrugNames,
+      count: cleanDrugNames.length,
+    })
+
+    // 调用AI服务进行深度分析
+    const result = await aiService.analyzeInteractionsDetailed(cleanDrugNames)
+
+    ctx.body = {
+      success: true,
+      data: result,
+      timestamp: Date.now(),
+    }
+  } catch (error) {
+    logger.error('深度分析药物相互作用失败', { error: error.message })
+
+    // 判断错误类型
+    if (error.message === 'AI_TIMEOUT' || error.message.includes('超时')) {
+      ctx.status = 504
+      ctx.body = {
+        success: false,
+        error: {
+          code: 'AI_TIMEOUT',
+          message: 'AI分析超时，请稍后重试',
+        },
+        timestamp: Date.now(),
+      }
+    } else if (error.message.includes('无法连接到AI服务') || error.code === 'AI_CONNECTION_ERROR') {
+      ctx.status = 502
+      ctx.body = {
+        success: false,
+        error: {
+          code: 'AI_SERVICE_ERROR',
+          message: 'AI服务暂时不可用，请检查网络连接',
+        },
+        timestamp: Date.now(),
+      }
+    } else {
+      ctx.status = 500
+      ctx.body = {
+        success: false,
+        error: {
+          code: 'ANALYZE_INTERACTIONS_ERROR',
+          message: error.message || '分析药物相互作用失败',
+        },
+        timestamp: Date.now(),
+      }
     }
   }
 }

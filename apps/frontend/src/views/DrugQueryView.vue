@@ -182,22 +182,234 @@
           </div>
         </section>
 
-        <!-- 历史记录 -->
-        <section class="history-section" v-if="history.length > 0 && !searchResult && !loading">
-          <h3 class="history-title">📜 历史查询</h3>
-          <div class="history-list">
-            <button 
-              class="history-item" 
-              v-for="(item, index) in history" 
-              :key="index"
-              @click="searchQuery = item; handleSearch()"
-            >
-              <span class="history-icon">💊</span>
-              <span class="history-name">{{ item }}</span>
-              <span class="history-time">{{ getTimeAgo(index) }}</span>
-            </button>
+        <!-- 历史记录（抽屉式） -->
+        <aside class="history-sidebar" :class="{ open: showHistory }">
+          <div class="sidebar-header">
+            <h3 class="sidebar-title">📜 历史查询</h3>
+            <button class="close-btn" @click="showHistory = false">×</button>
           </div>
-          <button class="clear-history-btn" @click="clearHistory">清除历史记录</button>
+          <div class="sidebar-content" v-if="history.length > 0">
+            <div class="history-list">
+              <button 
+                class="history-item" 
+                v-for="(item, index) in history" 
+                :key="index"
+                @click="searchQuery = item; handleSearch(); showHistory = false"
+              >
+                <span class="history-icon">💊</span>
+                <span class="history-name">{{ item }}</span>
+                <span class="history-time">{{ getTimeAgo(index) }}</span>
+              </button>
+            </div>
+            <button class="clear-history-btn" @click="clearHistory">清除历史记录</button>
+          </div>
+          <div class="sidebar-empty" v-else>
+            <span>暂无历史记录</span>
+          </div>
+        </aside>
+
+        <!-- 历史记录切换按钮（移动端） -->
+        <button 
+          class="history-toggle-btn" 
+          v-if="history.length > 0"
+          @click="showHistory = true"
+          :class="{ visible: !showHistory }"
+        >
+          <span class="toggle-icon">📜</span>
+          <span class="toggle-text">历史记录</span>
+        </button>
+
+        <!-- 遮罩层 -->
+        <div 
+          class="history-overlay" 
+          v-if="showHistory" 
+          @click="showHistory = false"
+        ></div>
+
+        <!-- 相互作用分析搜索区域 -->
+        <section class="interaction-search-section">
+          <div class="interaction-section-header">
+            <div class="header-icon interaction-icon">
+              <span>🔬</span>
+            </div>
+            <div class="header-text">
+              <h2 class="section-title">药物相互作用深度分析</h2>
+              <p class="section-description">
+                输入多个药物名称，AI将从分子层面、化学原理层面详细分析药物之间的相互作用关系
+              </p>
+            </div>
+          </div>
+          
+          <div class="interaction-search-container">
+            <div class="interaction-input-wrapper">
+              <span class="interaction-icon">💊</span>
+              
+              <!-- 药物标签展示区域 -->
+              <div class="interaction-tags-container">
+                <div class="interaction-tags">
+                  <div 
+                    class="interaction-tag" 
+                    v-for="(tag, index) in interactionTags" 
+                    :key="index"
+                  >
+                    <span class="tag-name">{{ tag }}</span>
+                    <button 
+                      class="tag-remove" 
+                      @click="removeInteractionTag(index)"
+                      :disabled="interactionLoading"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+                <input
+                  v-model="interactionQuery"
+                  type="text"
+                  class="interaction-tag-input"
+                  placeholder="输入药物名称，按回车添加"
+                  @keyup.enter="addInteractionTag"
+                  @input="interactionQuery = $event.target.value"
+                  :disabled="interactionLoading"
+                />
+              </div>
+              
+              <button 
+                class="interaction-btn"
+                @click="handleInteractionAnalysis"
+                :disabled="interactionLoading || interactionTags.length < 2"
+              >
+                <span v-if="!interactionLoading">分析相互作用关系</span>
+                <span v-else class="loading-spinner"></span>
+              </button>
+            </div>
+            
+            <div class="interaction-hint">
+              <span>💡</span>
+              <span>已添加 {{ interactionTags.length }} 个药物（至少需要2个）</span>
+            </div>
+          </div>
+
+          <!-- 错误提示 -->
+          <div class="interaction-error" v-if="interactionError">
+            <div class="error-icon">⚠️</div>
+            <div class="error-content">
+              <h3 class="error-title">分析失败</h3>
+              <p class="error-message">{{ interactionError }}</p>
+            </div>
+            <button class="retry-btn" @click="handleInteractionAnalysis">重试</button>
+          </div>
+
+          <!-- 分析结果 -->
+          <div class="interaction-result-card" v-if="interactionResult">
+            <!-- 整体风险评估 -->
+            <div class="risk-overview">
+              <div class="risk-badge" :class="interactionResult.overallRisk">
+                <span class="risk-label">整体风险等级</span>
+                <span class="risk-value">{{ getRiskLabel(interactionResult.overallRisk) }}</span>
+              </div>
+              <div class="analysis-summary">
+                <h4>📊 综合分析总结</h4>
+                <p>{{ interactionResult.analysisSummary }}</p>
+              </div>
+            </div>
+
+            <!-- 注意事项 -->
+            <div class="precautions-section" v-if="interactionResult.precautions?.length">
+              <h4>⚠️ 注意事项</h4>
+              <ul class="precautions-list">
+                <li v-for="(item, index) in interactionResult.precautions" :key="index">
+                  {{ item }}
+                </li>
+              </ul>
+            </div>
+
+            <!-- 分子层面相互作用 -->
+            <div class="molecular-section" v-if="interactionResult.molecularInteractions?.length">
+              <h4>🧬 分子层面相互作用</h4>
+              <div class="molecular-list">
+                <div 
+                  class="molecular-item" 
+                  v-for="(item, index) in interactionResult.molecularInteractions" 
+                  :key="index"
+                >
+                  <div class="molecular-type">{{ item.type }}</div>
+                  <div class="molecular-target">影响目标：{{ item.affectedTarget }}</div>
+                  <div class="molecular-desc">{{ item.description }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 详细相互作用分析 -->
+            <div class="interactions-detail-section">
+              <h4>📋 详细相互作用分析</h4>
+              <div class="interaction-cards">
+                <div 
+                  class="interaction-detail-card"
+                  v-for="(interaction, index) in interactionResult.interactions"
+                  :key="index"
+                >
+                  <div class="card-drugs">
+                    <span class="drug-badge">{{ interaction.drug1 }}</span>
+                    <span class="drug-arrow">↔</span>
+                    <span class="drug-badge">{{ interaction.drug2 }}</span>
+                  </div>
+                  
+                  <div class="severity-badge" :class="interaction.severity">
+                    {{ getSeverityLabel(interaction.severity) }}
+                  </div>
+
+                  <div class="interaction-tabs">
+                    <button 
+                      class="tab-btn"
+                      :class="{ active: showInteractionDetail === index }"
+                      @click="toggleInteractionDetail(index)"
+                    >
+                      查看详细分析
+                      <span class="tab-arrow" :class="{ expanded: showInteractionDetail === index }">▼</span>
+                    </button>
+                  </div>
+
+                  <div class="interaction-details" v-show="showInteractionDetail === index">
+                    <div class="detail-block">
+                      <h5>🔬 分子层面机制</h5>
+                      <p>{{ interaction.molecularMechanism }}</p>
+                    </div>
+                    
+                    <div class="detail-block">
+                      <h5>⚗️ 化学原理分析</h5>
+                      <p>{{ interaction.chemicalPrinciples }}</p>
+                    </div>
+                    
+                    <div class="detail-block">
+                      <h5>💊 药效学影响</h5>
+                      <p>{{ interaction.pharmacodynamics }}</p>
+                    </div>
+                    
+                    <div class="detail-block">
+                      <h5>📈 药代动力学变化</h5>
+                      <p>{{ interaction.pharmacokinetics }}</p>
+                    </div>
+                    
+                    <div class="detail-block">
+                      <h5>🏥 临床意义</h5>
+                      <p>{{ interaction.clinicalImplications }}</p>
+                    </div>
+                    
+                    <div class="detail-block recommendation">
+                      <h5>✅ 用药建议</h5>
+                      <p>{{ interaction.recommendation }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="interaction-footer">
+              <button class="action-btn btn-secondary" @click="clearInteractionResult">
+                清除结果
+              </button>
+            </div>
+          </div>
         </section>
 
         <!-- 空白状态 -->
@@ -267,7 +479,9 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { drugApi } from '@/api/drug'
+import { interactionApi } from '@/api/interaction'
 import type { AnalyzeDrugResult } from '@/api/drug'
+import type { DetailedInteractionResult } from '@/types'
 
 const router = useRouter()
 
@@ -293,6 +507,15 @@ const validationHint = ref<string | null>(null)
 const showAiAnalysis = ref(false)
 const history = ref<string[]>([])
 const toasts = ref<Array<{ id: number; message: string; type: string }>>([])
+const showHistory = ref(false)
+
+// 相互作用分析相关数据
+const interactionQuery = ref('')
+const interactionTags = ref<string[]>([])
+const interactionLoading = ref(false)
+const interactionResult = ref<DetailedInteractionResult | null>(null)
+const interactionError = ref<string | null>(null)
+const showInteractionDetail = ref<number | null>(null)
 
 // Toast 相关
 let toastId = 0
@@ -401,6 +624,101 @@ const clearHistory = () => {
 const getTimeAgo = (index: number) => {
   // 简化的相对时间显示
   return index === 0 ? '刚刚' : `${index + 1}次前`
+}
+
+// 添加药物标签
+const addInteractionTag = () => {
+  const name = interactionQuery.value.trim()
+  if (!name) return
+  
+  // 避免重复添加
+  if (interactionTags.value.includes(name)) {
+    showToast('该药物已添加', 'warning')
+    interactionQuery.value = ''
+    return
+  }
+  
+  // 限制最多10个药物
+  if (interactionTags.value.length >= 10) {
+    showToast('最多添加10个药物', 'warning')
+    interactionQuery.value = ''
+    return
+  }
+  
+  interactionTags.value.push(name)
+  interactionQuery.value = ''
+}
+
+// 移除药物标签
+const removeInteractionTag = (index: number) => {
+  interactionTags.value.splice(index, 1)
+}
+
+// 相互作用分析方法
+const handleInteractionAnalysis = async () => {
+  if (interactionTags.value.length < 2 || interactionLoading.value) return
+
+  // 清空之前的结果
+  interactionError.value = null
+  interactionResult.value = null
+  showInteractionDetail.value = null
+
+  interactionLoading.value = true
+
+  try {
+    const response = await interactionApi.analyzeInteractionsByNames(interactionTags.value)
+    
+    if (response.success && response.data) {
+      interactionResult.value = response.data
+      showToast('分析完成', 'success')
+    } else {
+      interactionError.value = response.error?.message || '分析失败，请稍后重试'
+    }
+  } catch (err: any) {
+    console.error('分析药物相互作用失败:', err)
+    interactionError.value = err.message || '分析失败，请稍后重试'
+  } finally {
+    interactionLoading.value = false
+  }
+}
+
+// 清除相互作用分析结果
+const clearInteractionResult = () => {
+  interactionResult.value = null
+  interactionError.value = null
+  interactionQuery.value = ''
+  showInteractionDetail.value = null
+}
+
+// 展开/收起相互作用详情
+const toggleInteractionDetail = (index: number) => {
+  if (showInteractionDetail.value === index) {
+    showInteractionDetail.value = null
+  } else {
+    showInteractionDetail.value = index
+  }
+}
+
+// 获取风险等级标签
+const getRiskLabel = (risk: string): string => {
+  const labels: Record<string, string> = {
+    low: '低风险',
+    medium: '中风险',
+    high: '高风险',
+    critical: '极高风险'
+  }
+  return labels[risk] || '未知'
+}
+
+// 获取严重程度标签
+const getSeverityLabel = (severity: string): string => {
+  const labels: Record<string, string> = {
+    low: '低风险',
+    medium: '中风险',
+    high: '高风险',
+    critical: '极高风险'
+  }
+  return labels[severity] || '未知'
 }
 
 // 加载历史记录
@@ -721,14 +1039,585 @@ onMounted(() => {
 }
 
 /* 快捷标签 */
-.quick-tags {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
+  .quick-tags {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* 相互作用分析搜索区域 */
+  .interaction-search-section {
+    margin-top: 3rem;
+    animation: fadeInUp 0.6s ease-out 0.2s both;
+  }
+
+  .interaction-section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .interaction-section-header .header-icon {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
+    border-color: rgba(139, 92, 246, 0.3);
+  }
+
+  .interaction-section-header .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+
+  .interaction-section-header .section-description {
+    font-size: 0.95rem;
+    color: #a1a1aa;
+    line-height: 1.5;
+  }
+
+  .interaction-search-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .interaction-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 1.25rem;
+    transition: all 0.3s;
+  }
+
+  .interaction-input-wrapper:focus-within {
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+  }
+
+  .interaction-input-wrapper .interaction-icon {
+    font-size: 1.25rem;
+    color: #a78bfa;
+  }
+
+  /* 药物标签容器 */
+  .interaction-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    min-height: 48px;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: border-color 0.3s;
+  }
+
+  .interaction-tags-container:focus-within {
+    border-color: rgba(139, 92, 246, 0.4);
+  }
+
+  .interaction-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .interaction-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 8px;
+    animation: tagSlideIn 0.2s ease-out;
+  }
+
+  @keyframes tagSlideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .tag-name {
+    font-size: 0.9rem;
+    color: #e4e4e7;
+    font-weight: 500;
+  }
+
+  .tag-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: rgba(139, 92, 246, 0.3);
+    border: none;
+    border-radius: 50%;
+    color: #a78bfa;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+  }
+
+  .tag-remove:hover {
+    background: rgba(239, 68, 68, 0.4);
+    color: #f87171;
+  }
+
+  .tag-remove:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .interaction-tag-input {
+    flex: 1;
+    min-width: 150px;
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    font-size: 0.95rem;
+    color: #fff;
+    outline: none;
+  }
+
+  .interaction-tag-input::placeholder {
+    color: #71717a;
+  }
+
+  .interaction-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: 1rem;
+    color: #fff;
+    outline: none;
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+    transition: border-color 0.3s;
+  }
+
+  .interaction-input::placeholder {
+    color: #71717a;
+  }
+
+  .interaction-input:focus {
+    border-color: rgba(139, 92, 246, 0.4);
+  }
+
+  .interaction-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .interaction-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+  }
+
+  .interaction-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .interaction-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: #71717a;
+  }
+
+  .interaction-hint span:first-child {
+    font-size: 1rem;
+  }
+
+  /* 相互作用分析错误提示 */
+  .interaction-error {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    max-width: 600px;
+    margin: 1.5rem auto 0;
+    padding: 1.5rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 16px;
+  }
+
+  /* 相互作用分析结果卡片 */
+  .interaction-result-card {
+    max-width: 900px;
+    margin: 2rem auto 0;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    overflow: hidden;
+    animation: fadeInUp 0.5s ease-out;
+  }
+
+  /* 风险概览 */
+  .risk-overview {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .risk-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    min-width: 120px;
+  }
+
+  .risk-badge.low {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .risk-badge.medium {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .risk-badge.high {
+    background: rgba(249, 115, 22, 0.15);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+  }
+
+  .risk-badge.critical {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .risk-label {
+    font-size: 0.75rem;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+  }
+
+  .risk-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .risk-badge.low .risk-value { color: #34d399; }
+  .risk-badge.medium .risk-value { color: #fbbf24; }
+  .risk-badge.high .risk-value { color: #fb923c; }
+  .risk-badge.critical .risk-value { color: #f87171; }
+
+  .analysis-summary {
+    flex: 1;
+  }
+
+  .analysis-summary h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.75rem;
+  }
+
+  .analysis-summary p {
+    font-size: 0.95rem;
+    color: #e4e4e7;
+    line-height: 1.7;
+  }
+
+  /* 注意事项 */
+  .precautions-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .precautions-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fbbf24;
+    margin-bottom: 1rem;
+  }
+
+  .precautions-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .precautions-list li {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    color: #e4e4e7;
+    line-height: 1.5;
+  }
+
+  .precautions-list li::before {
+    content: '⚠️';
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  /* 分子层面相互作用 */
+  .molecular-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .molecular-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #a78bfa;
+    margin-bottom: 1rem;
+  }
+
+  .molecular-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .molecular-item {
+    padding: 1rem;
+    background: rgba(139, 92, 246, 0.05);
+    border: 1px solid rgba(139, 92, 246, 0.1);
+    border-radius: 10px;
+  }
+
+  .molecular-type {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(139, 92, 246, 0.2);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #a78bfa;
+    margin-bottom: 0.75rem;
+  }
+
+  .molecular-target {
+    font-size: 0.9rem;
+    color: #fbbf24;
+    margin-bottom: 0.5rem;
+  }
+
+  .molecular-desc {
+    font-size: 0.9rem;
+    color: #e4e4e7;
+    line-height: 1.5;
+  }
+
+  /* 详细相互作用分析 */
+  .interactions-detail-section {
+    padding: 1.5rem;
+  }
+
+  .interactions-detail-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 1rem;
+  }
+
+  .interaction-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .interaction-detail-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: all 0.3s;
+  }
+
+  .interaction-detail-card:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+  }
+
+  .card-drugs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .drug-badge {
+    padding: 8px 16px;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #60a5fa;
+  }
+
+  .drug-arrow {
+    font-size: 1.25rem;
+    color: #71717a;
+  }
+
+  .severity-badge {
+    display: block;
+    text-align: center;
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+
+  .severity-badge.low {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .severity-badge.medium {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .severity-badge.high {
+    background: rgba(249, 115, 22, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.3);
+  }
+
+  .severity-badge.critical {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .interaction-tabs {
+    margin-bottom: 0.5rem;
+  }
+
+  .tab-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    color: #a1a1aa;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab-btn:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+  }
+
+  .tab-btn.active {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+    color: #a78bfa;
+  }
+
+  .tab-arrow {
+    font-size: 0.75rem;
+    transition: transform 0.3s;
+  }
+
+  .tab-arrow.expanded {
+    transform: rotate(180deg);
+  }
+
+  .interaction-details {
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .detail-block {
+    margin-bottom: 1.25rem;
+  }
+
+  .detail-block:last-child {
+    margin-bottom: 0;
+  }
+
+  .detail-block h5 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e4e4e7;
+    margin-bottom: 0.5rem;
+  }
+
+  .detail-block p {
+    font-size: 0.9rem;
+    color: #a1a1aa;
+    line-height: 1.7;
+  }
+
+  .detail-block.recommendation {
+    padding: 1rem;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    border-radius: 10px;
+  }
+
+  .detail-block.recommendation h5 {
+    color: #34d399;
+  }
+
+  .detail-block.recommendation p {
+    color: #e4e4e7;
+  }
+
+  .interaction-footer {
+    display: flex;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
 
 .tags-label {
   font-size: 0.875rem;
@@ -1120,6 +2009,175 @@ onMounted(() => {
 .clear-history-btn:hover {
   border-color: rgba(239, 68, 68, 0.3);
   color: #f87171;
+}
+
+/* 历史记录抽屉式侧边栏 */
+.history-sidebar {
+  position: fixed;
+  top: 72px;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  background: rgba(15, 15, 20, 0.98);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 200;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.close-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  color: #a1a1aa;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.sidebar-content {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #71717a;
+  font-size: 0.9rem;
+}
+
+/* 历史记录列表样式（抽屉内） */
+.history-sidebar .history-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-sidebar .history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-sidebar .history-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.history-sidebar .history-icon {
+  font-size: 1rem;
+}
+
+.history-sidebar .history-name {
+  flex: 1;
+  text-align: left;
+  color: #e4e4e7;
+  font-size: 0.9rem;
+}
+
+.history-sidebar .history-time {
+  font-size: 0.7rem;
+  color: #52525b;
+}
+
+.history-sidebar .clear-history-btn {
+  margin-top: 1rem;
+}
+
+/* 历史记录切换按钮（移动端显示） */
+.history-toggle-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  border: none;
+  border-radius: 100px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+  z-index: 150;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.history-toggle-btn.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.history-toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.5);
+}
+
+.toggle-icon {
+  font-size: 1.1rem;
+}
+
+/* 遮罩层 */
+.history-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 199;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* 空白状态 */

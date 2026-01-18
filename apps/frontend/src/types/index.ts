@@ -160,3 +160,41 @@ export interface SearchResponse<T> {
   count: number
   timestamp: number
 }
+
+/**
+ * 深度相互作用分析详情接口
+ * 对应 API: POST /api/interactions/analyze-by-names 响应的 interactions 数组元素
+ */
+export interface DetailedInteraction {
+  drug1: string
+  drug2: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  molecularMechanism: string      // 分子层面机制
+  chemicalPrinciples: string      // 化学原理分析
+  pharmacodynamics: string        // 药效学影响
+  pharmacokinetics: string        // 药代动力学变化
+  clinicalImplications: string    // 临床意义
+  recommendation: string          // 用药建议
+}
+
+/**
+ * 分子相互作用详情接口
+ * 对应 API: POST /api/interactions/analyze-by-names 响应的 molecularInteractions 数组元素
+ */
+export interface MolecularInteraction {
+  type: string                     // 相互作用类型
+  affectedTarget: string           // 受影响的目标（如CYP2C9酶）
+  description: string              // 详细描述
+}
+
+/**
+ * 深度相互作用分析结果接口
+ * 对应 API: POST /api/interactions/analyze-by-names 响应的 data 字段
+ */
+export interface DetailedInteractionResult {
+  interactions: DetailedInteraction[]
+  overallRisk: 'low' | 'medium' | 'high' | 'critical'
+  analysisSummary: string          // 综合分析总结
+  molecularInteractions: MolecularInteraction[]
+  precautions: string[]            // 注意事项
+}

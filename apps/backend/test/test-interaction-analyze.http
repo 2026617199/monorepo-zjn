@@ -1,0 +1,238 @@
+/**
+ * 药物相互作用深度分析接口测试用例
+ * 测试 POST /api/interactions/analyze-by-names
+ */
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+###############################################
+# 基础功能测试
+###############################################
+
+### 测试1: 深度分析两种药物的相互作用 (高风险组合)
+# 阿司匹林 + 华法林 = 抗凝作用增强，出血风险高
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿司匹林", "华法林"]
+}
+
+### 测试2: 深度分析三种药物的相互作用
+# 阿司匹林 + 布洛芬 + 华法林
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿司匹林", "布洛芬", "华法林"]
+}
+
+### 测试3: 深度分析五种常用药物
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿司匹林", "布洛芬", "对乙酰氨基酚", "华法林", "地高辛"]
+}
+
+### 测试4: 中药与西药相互作用分析
+# 银杏叶 + 华法林 = 增强抗凝作用
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["银杏叶", "华法林", "阿司匹林"]
+}
+
+### 测试5: 常见感冒药组合分析
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["对乙酰氨基酚", "布洛芬", "伪麻黄碱", "氯苯那敏"]
+}
+
+###############################################
+# 边界条件测试
+###############################################
+
+### 测试6: 边界测试 - 正好2个药物
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["对乙酰氨基酚", "布洛芬"]
+}
+
+### 测试7: 边界测试 - 10个药物（最大限制）
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": [
+    "阿司匹林", "布洛芬", "对乙酰氨基酚", "华法林", "地高辛",
+    "美托洛尔", "氨氯地平", "奥美拉唑", "二甲双胍", "辛伐他汀"
+  ]
+}
+
+### 测试8: 边界测试 - 11个药物（应返回错误）
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": [
+    "阿司匹林", "布洛芬", "对乙酰氨基酚", "华法林", "地高辛",
+    "美托洛尔", "氨氯地平", "奥美拉唑", "二甲双胍", "辛伐他汀", "阿托伐他汀"
+  ]
+}
+
+###############################################
+# 异常情况测试
+###############################################
+
+### 测试9: 异常测试 - 只有1个药物（应返回错误）
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿司匹林"]
+}
+
+### 测试10: 异常测试 - 空数组（应返回错误）
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": []
+}
+
+### 测试11: 异常测试 - 缺少 drugNames 参数
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+}
+
+### 测试12: 异常测试 - 包含空字符串
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿司匹林", "", "华法林"]
+}
+
+### 测试13: 异常测试 - 包含重复药物
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿司匹林", "华法林", "阿司匹林"]
+}
+
+### 测试14: 异常测试 - 药物名称全是空格
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿司匹林", "   ", "华法林"]
+}
+
+###############################################
+# 前端UI测试场景
+###############################################
+
+### 测试15: 前端测试 - 逐个添加标签流程
+# 依次添加: 阿司匹林 -> 华法林 -> 布洛芬
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿司匹林", "华法林", "布洛芬"]
+}
+
+### 测试16: 前端测试 - 清除标签后重新添加
+# 先清除所有标签，再添加新的药物组合
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["二甲双胍", "格列美脲", "阿卡波糖"]
+}
+
+### 测试17: 前端测试 - 删除中间标签
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["美托洛尔", "氨氯地平", "阿司匹林", "华法林"]
+}
+
+###############################################
+# 低风险药物组合测试
+###############################################
+
+### 测试18: 低风险组合 - 维生素类
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["维生素C", "维生素D", "钙片"]
+}
+
+### 测试19: 低风险组合 - 常见保健品
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["鱼油", "卵磷脂", "蜂胶"]
+}
+
+###############################################
+# 精神类药物测试
+###############################################
+
+### 测试20: 精神类药物相互作用
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["氟西汀", "文拉法辛", "安非他酮"]
+}
+
+### 测试21: 抗生素药物相互作用
+POST {{baseUrl}}/api/interactions/analyze-by-names
+Content-Type: {{contentType}}
+
+{
+  "drugNames": ["阿莫西林", "克拉霉素", "甲硝唑"]
+}
+
+###############################################
+# 预期结果参考
+###############################################
+
+/*
+测试用例预期结果参考：
+
+1. 阿司匹林 + 华法林:
+   - 整体风险: HIGH (高风险)
+   - 主要相互作用: 抗凝作用增强，出血风险增加
+   - 机制: 阿司匹林抑制血小板聚集，华法林抑制维生素K依赖性凝血因子
+
+2. 阿司匹林 + 布洛芬 + 华法林:
+   - 整体风险: HIGH (高风险)
+   - 多重相互作用: 抗凝增强 + 胃肠道副作用叠加
+
+3. 银杏叶 + 华法林 + 阿司匹林:
+   - 整体风险: CRITICAL (极高风险)
+   - 三者叠加，抗凝作用极强
+
+4. 对乙酰氨基酚 + 布洛芬:
+   - 整体风险: MEDIUM (中风险)
+   - 药效学协同作用，副作用叠加
+
+5. 维生素类组合:
+   - 整体风险: LOW (低风险)
+   - 通常无明显相互作用
+*/
