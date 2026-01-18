@@ -594,12 +594,18 @@ const saveToDatabase = async () => {
 
     if (response.success) {
       showToast('已保存到药物库', 'success')
+    } else if (response.error?.code === 'DRUG_EXISTS') {
+      showToast('该药物在数据库当中已存在', 'error')
     } else {
       showToast(response.error?.message || '保存失败', 'error')
     }
   } catch (err: any) {
     console.error('保存药物失败:', err)
-    showToast(err.message || '保存失败', 'error')
+    if (err.response?.data?.error?.code === 'DRUG_EXISTS') {
+      showToast('该药物在数据库当中已存在', 'error')
+    } else {
+      showToast(err.response?.data?.error?.message || err.message || '保存失败', 'error')
+    }
   } finally {
     saving.value = false
   }
